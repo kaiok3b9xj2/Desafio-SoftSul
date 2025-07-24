@@ -5,37 +5,45 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Pedido;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class PedidoApiController extends Controller
 {
     public function index()
     {
-        $pedidos = Pedido::all();
-        return view('welcome', compact('pedidos'));
+        return response()->json(Pedido::all());
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
-        Pedido::create($request->all());
-        return redirect()->back();
+        try {
+            $validated = $request->validate([
+                'nome' => 'required|string|max:255',
+                'data_pedido' => 'required|date',
+                'data_entrega' => 'nullable|date',
+                'status' => 'required|string',
+                // Adicione outros campos necessários
+            ]);
+
+            $pedido = Pedido::create($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pedido criado com sucesso',
+                'data' => $pedido
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao criar pedido'
+            ], 500);
+        }
     }
 
-    public function edit($id)
-    {
-        $pedido = Pedido::findOrFail($id);
-        return view('edit', compact('pedido'));
-    }
-
-    public function update(Request $request, $id)
-    {
-        $pedido = Pedido::findOrFail($id);
-        $pedido->update($request->all());
-        return redirect()->route('pedidos.index')->with('success', 'Pedido atualizado com sucesso!');
-    }
-
-    public function destroy($id)
-    {
-        Pedido::findOrFail($id)->delete();
-        return redirect()->back();
-    }
+    // Aplicar mesma lógica de validação e tratamento de erros nos outros métodos
 }
